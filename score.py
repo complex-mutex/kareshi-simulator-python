@@ -350,8 +350,9 @@ class Stage:
 
         total_point = 35
 
-        if self.enemy is not None and self.bp.can_attack(1):
-            p, item = self.enemy.attack(drop_rate, appeal, point, AttackType.ATTACK1)
+        if self.enemy is not None and (self.bp.can_attack(1) or self.special.can_attack()):
+            attacktype = AttackType.ATTACK1 if self.bp.can_attack(1) else AttackType.ATTACKSP
+            p, item = self.enemy.attack(drop_rate, appeal, point, attacktype)
             total_point += p
             if self.enemy.is_win():
                 self.item_manager.get(item)
@@ -404,7 +405,6 @@ class Simulator:
             self.stamina.is_end(RUN_STAMINA)
             and ((self.bp.is_end() and self.special.is_end()) or self.date_manager.is_end())
         ):
-
             if not self.stamina.is_end(RUN_STAMINA):
                 love_level = self.love_appeal.love_level
                 stages = [self.stage1]
@@ -428,11 +428,12 @@ class Simulator:
                 p = stage.run(appeal, point, self.drop_rate.get(0.3 * self.dropup.boost()))
                 total_point += p
             elif not (self.bp.is_end() and self.special.is_end()) and not self.date_manager.is_end():
+                attacktype = AttackType.ATTACK1 if self.bp.can_attack(1) else AttackType.ATTACKSP
                 p = self.date_manager.attack(
                     self.drop_rate.get(0.3 * self.dropup.boost()),
                     appeal,
                     point,
-                    AttackType.ATTACK1,
+                    attacktype,
                     0.45 * self.dateup.boost(),
                 )
 
@@ -448,7 +449,7 @@ if __name__ == "__main__":
     stamina = Stamina(0, 1000, 0, 150)
 
     # 鈍器
-    special = SpecialBP(0)
+    special = SpecialBP(10)
 
     # アピール値 (BP1の値)
     simulator = Simulator(appeal=13000, bp=bp, stamina=stamina, special=special)

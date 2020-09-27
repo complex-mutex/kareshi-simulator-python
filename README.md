@@ -10,7 +10,7 @@ bp = BP(0, 1000, 1000)
 stamina = Stamina(0, 1000, 0, 150)
 
 # 鈍器
-special = SpecialBP(0)
+special = SpecialBP(10)
 
 # アピール値 (BP1の値)
 simulator = Simulator(appeal=13000, bp=bp, stamina=stamina, special=special)
