@@ -164,13 +164,14 @@ class EnemyType(Enum):
 
 
 class EnemyManager:
-    def __init__(self, hps, exps, bp, special, enemy_type, random=False):
+    def __init__(self, hps, exps, bp, special, enemy_type, attack_strategy, random=False):
         self.current_level = 1
         self.hps = hps
         self.exps = exps
         self.bp = bp
         self.special = special
         self.enemy_type = enemy_type
+        self.attack_strategy = attack_strategy
         self.random = random
 
         if len(hps) != len(exps):
@@ -182,7 +183,9 @@ class EnemyManager:
             level = choice(range(self.max_level), 1)[0]
         else:
             level = self.current_level - 1
-        return Enemy(self.hps[level], self.exps[level], self, self.bp, self.special, self.enemy_type,)
+        return Enemy(
+            self.hps[level], self.exps[level], self, self.bp, self.special, self.enemy_type, self.attack_strategy
+        )
 
     def win(self):
         if not self.random:
@@ -245,38 +248,44 @@ class AttackStrategy:
 
 
 class Enemy:
-    def __init__(self, hp, exp, manager, bp, special, enemy_type):
+    def __init__(self, hp, exp, manager, bp, special, enemy_type, attack_strategy):
         self.hp = hp
         self.exp = exp
         self.manager = manager
         self.bp = bp
         self.special = special
         self.enemy_type = enemy_type
+        self.attack_strategy = attack_strategy
 
     def is_win(self):
         return self.hp <= 0
 
     # return: 獲得経験値，アイテム数
-    def attack(self, drop_rate, appeal, point, attack_type):
+    def attack(self, drop_rate, appeal, point):
         if self.is_win():
             raise ValueError("enemy is already deleted")
 
         twice = choice([1, 2], 1, [0.7, 0.3])[0]
 
-        if attack_type == AttackType.ATTACK1 and self.bp.can_attack(1):
-            attack1 = appeal.boost()
-            self.bp.run(1)
-            self.hp -= attack1 * twice
+        for _ in range(twice):
+            if self.hp <= 0:
+                break
+            attack1 = appeal.boost() if self.bp.can_attack(1) else None
+            attack3 = appeal.boost() * 4 if self.bp.can_attack(3) else None
+            attacksp = appeal.boost() * 10 if self.special.can_attack() else None
+            attack_type = self.attack_strategy(self.hp, attack1, attack3, attacksp)
 
-        if attack_type == AttackType.ATTACK3 and self.bp.can_attack(3):
-            attack3 = appeal.boost() * 4
-            self.bp.run(3)
-            self.hp -= attack3 * twice
+            if attack_type == AttackType.ATTACK1 and self.bp.can_attack(1):
+                self.bp.run(1)
+                self.hp -= attack1
 
-        if attack_type == AttackType.ATTACKSP and self.special.can_attack():
-            attacksp = appeal.boost() * 10
-            self.special.run()
-            self.hp -= attacksp * twice
+            if attack_type == AttackType.ATTACK3 and self.bp.can_attack(3):
+                self.bp.run(3)
+                self.hp -= attack3
+
+            if attack_type == AttackType.ATTACKSP and self.special.can_attack():
+                self.special.run()
+                self.hp -= attacksp
 
         if self.hp > 0:
             return 0, 0
@@ -317,7 +326,7 @@ class DateManager:
     def get(self):
         return self.enemy
 
-    def attack(self, drop_rate, appeal, point, attack_type, god_rate):
+    def attack(self, drop_rate, appeal, point, god_rate):
         if self.date > 0 and self.enemy is None:
             self.date -= 1
             self.enemy = self.enemy5.get()
@@ -325,7 +334,7 @@ class DateManager:
         if self.enemy is None:
             raise ValueError("no date")
 
-        point, item = self.enemy.attack(drop_rate, appeal, point, attack_type)
+        point, item = self.enemy.attack(drop_rate, appeal, point)
 
         if self.enemy.is_win():
             self.enemy = None
@@ -400,8 +409,7 @@ class Stage:
         total_point = 35
 
         if self.enemy is not None and (self.bp.can_attack(1) or self.special.can_attack()):
-            attacktype = AttackType.ATTACK1 if self.bp.can_attack(1) else AttackType.ATTACKSP
-            p, item = self.enemy.attack(drop_rate, appeal, point, attacktype)
+            p, item = self.enemy.attack(drop_rate, appeal, point)
             total_point += p
             if self.enemy.is_win():
                 self.item_manager.get(item)
@@ -420,10 +428,18 @@ class Simulator:
         self.bp = bp
         self.special = special
 
-        self.enemy1 = EnemyManager(ATTACK1_HP, ATTACK1_EXP, self.bp, self.special, EnemyType.ENEMY1, random=False,)
-        self.enemy3 = EnemyManager(ATTACK3_HP, ATTACK3_EXP, self.bp, self.special, EnemyType.ENEMY3, random=False,)
-        self.enemy5 = EnemyManager(ATTACK5_HP, ATTACK5_EXP, self.bp, self.special, EnemyType.ENEMY5, random=True,)
-        self.enemy7 = EnemyManager(ATTACKSP_HP, ATTACKSP_EXP, self.bp, self.special, EnemyType.ENEMY7, random=False,)
+        self.enemy1 = EnemyManager(
+            ATTACK1_HP, ATTACK1_EXP, self.bp, self.special, EnemyType.ENEMY1, strategy.enemy1_attack, random=False,
+        )
+        self.enemy3 = EnemyManager(
+            ATTACK3_HP, ATTACK3_EXP, self.bp, self.special, EnemyType.ENEMY3, strategy.enemy3_attack, random=False,
+        )
+        self.enemy5 = EnemyManager(
+            ATTACK5_HP, ATTACK5_EXP, self.bp, self.special, EnemyType.ENEMY5, strategy.enemy5_attack, random=True,
+        )
+        self.enemy7 = EnemyManager(
+            ATTACKSP_HP, ATTACKSP_EXP, self.bp, self.special, EnemyType.ENEMY7, strategy.enemy7_attack, random=False,
+        )
 
         self.love_appeal = LoveAppeal(LOVE_APPEAL_COUNT)
 
@@ -477,13 +493,8 @@ class Simulator:
                 p = stage.run(appeal, point, self.drop_rate.get(0.3 * self.dropup.boost()))
                 total_point += p
             elif not (self.bp.is_end() and self.special.is_end()) and not self.date_manager.is_end():
-                attacktype = AttackType.ATTACK1 if self.bp.can_attack(1) else AttackType.ATTACKSP
                 p = self.date_manager.attack(
-                    self.drop_rate.get(0.3 * self.dropup.boost()),
-                    appeal,
-                    point,
-                    attacktype,
-                    0.45 * self.dateup.boost(),
+                    self.drop_rate.get(0.3 * self.dropup.boost()), appeal, point, 0.45 * self.dateup.boost(),
                 )
 
                 total_point += p
