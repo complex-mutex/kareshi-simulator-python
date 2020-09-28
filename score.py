@@ -267,25 +267,22 @@ class Enemy:
 
         twice = choice([1, 2], 1, [0.7, 0.3])[0]
 
-        for _ in range(twice):
-            if self.hp <= 0:
-                break
-            attack1 = appeal.boost() if self.bp.can_attack(1) else None
-            attack3 = appeal.boost() * 4 if self.bp.can_attack(3) else None
-            attacksp = appeal.boost() * 10 if self.special.can_attack() else None
-            attack_type = self.attack_strategy(self.hp, attack1, attack3, attacksp)
+        attack1 = appeal.boost() if self.bp.can_attack(1) else None
+        attack3 = appeal.boost() * 4 if self.bp.can_attack(3) else None
+        attacksp = appeal.boost() * 10 if self.special.can_attack() else None
+        attack_type = self.attack_strategy(self.hp, attack1, attack3, attacksp)
 
-            if attack_type == AttackType.ATTACK1 and self.bp.can_attack(1):
-                self.bp.run(1)
-                self.hp -= attack1
+        if attack_type == AttackType.ATTACK1 and self.bp.can_attack(1):
+            self.bp.run(1)
+            self.hp -= attack1 * twice
 
-            if attack_type == AttackType.ATTACK3 and self.bp.can_attack(3):
-                self.bp.run(3)
-                self.hp -= attack3
+        if attack_type == AttackType.ATTACK3 and self.bp.can_attack(3):
+            self.bp.run(3)
+            self.hp -= attack3 * twice
 
-            if attack_type == AttackType.ATTACKSP and self.special.can_attack():
-                self.special.run()
-                self.hp -= attacksp
+        if attack_type == AttackType.ATTACKSP and self.special.can_attack():
+            self.special.run()
+            self.hp -= attacksp * twice
 
         if self.hp > 0:
             return 0, 0
