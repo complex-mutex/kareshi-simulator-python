@@ -509,5 +509,5 @@ if __name__ == "__main__":
     special = SpecialBP(10)
 
     # アピール値 (BP1の値)
-    simulator = Simulator(appeal=13000, bp=bp, stamina=stamina, special=special, strategy=AttackStrategy)
+    simulator = Simulator(appeal=12675, bp=bp, stamina=stamina, special=special, strategy=AttackStrategy)
     print(simulator.simulate_score())

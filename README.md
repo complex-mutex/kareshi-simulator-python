@@ -14,9 +14,11 @@ special = SpecialBP(10)
 
 # appael: アピール値 (BP1の値)
 # strategy:攻撃戦略をクラス化したもの (詳しくわからなければ変更する必要なし)
-simulator = Simulator(appeal=13000, bp=bp, stamina=stamina, special=special, strategy=AttackStrategy)
+simulator = Simulator(appeal=12675, bp=bp, stamina=stamina, special=special, strategy=AttackStrategy)
 ```
 あとは端末から `python score.py` で実行すると自動でそれっぽいシミュレーションをして最終スコアを表示します．
+
+なぜかappealはベースを `12765`にして調節するといい感じになります．カードなどのブーストがある場合，`12765 * (ブースト%)` をお勧めします．
 
 ### 攻撃戦略について
 `AttackStrategy`クラスを継承する or 直接書き換えることで変更可能です．
