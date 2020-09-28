@@ -195,6 +195,55 @@ class AttackType(Enum):
     ATTACKSP = 10
 
 
+class AttackStrategy:
+    """
+    Args:
+    hp      : 敵の残りHP
+    bp1     : BP1での攻撃力 (アイテムが存在しない時はNone)
+    bp3     : BP3での攻撃力 (アイテムが存在しない時はNone)
+    special : 鈍器での攻撃力 (アイテムが存在しない時はNone)
+
+    Returns:
+    AttackType: ATTACK1 or ATTACK3 or ATTACKSPのいずれか
+    """
+
+    @staticmethod
+    def enemy1_attack(hp, bp1, bp3, special):
+        if bp3 and hp > bp3:
+            return AttackType.ATTACK3
+        elif bp1:
+            return AttackType.ATTACK1
+        else:
+            return AttackType.ATTACKSP
+
+    @staticmethod
+    def enemy3_attack(hp, bp1, bp3, special):
+        if bp3 and hp > bp3:
+            return AttackType.ATTACK3
+        elif bp1:
+            return AttackType.ATTACK1
+        else:
+            return AttackType.ATTACKSP
+
+    @staticmethod
+    def enemy5_attack(hp, bp1, bp3, special):
+        if bp3 and hp > bp3:
+            return AttackType.ATTACK3
+        elif bp1:
+            return AttackType.ATTACK1
+        else:
+            return AttackType.ATTACKSP
+
+    @staticmethod
+    def enemy7_attack(hp, bp1, bp3, special):
+        if bp3 and hp > bp3:
+            return AttackType.ATTACK3
+        elif bp1:
+            return AttackType.ATTACK1
+        else:
+            return AttackType.ATTACKSP
+
+
 class Enemy:
     def __init__(self, hp, exp, manager, bp, special, enemy_type):
         self.hp = hp
@@ -365,7 +414,7 @@ class Stage:
 # TODO: ガチャによるappealアップ実装
 # TODO: メンバーをどのアタックタイプで倒すかの選択
 class Simulator:
-    def __init__(self, *, appeal, bp, stamina, special):
+    def __init__(self, *, appeal, bp, stamina, special, strategy):
         self.appeal = appeal
         self.stamina = stamina
         self.bp = bp
@@ -452,5 +501,5 @@ if __name__ == "__main__":
     special = SpecialBP(10)
 
     # アピール値 (BP1の値)
-    simulator = Simulator(appeal=13000, bp=bp, stamina=stamina, special=special)
+    simulator = Simulator(appeal=13000, bp=bp, stamina=stamina, special=special, strategy=AttackStrategy)
     print(simulator.simulate_score())
