@@ -415,7 +415,6 @@ class Stage:
 
 
 # TODO: ガチャによるappealアップ実装
-# TODO: メンバーをどのアタックタイプで倒すかの選択
 class Simulator:
     def __init__(self, *, appeal, bp, stamina, special, attack_strategy):
         self.appeal = appeal
