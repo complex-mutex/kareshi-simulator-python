@@ -419,23 +419,47 @@ class Stage:
 # TODO: ガチャによるappealアップ実装
 # TODO: メンバーをどのアタックタイプで倒すかの選択
 class Simulator:
-    def __init__(self, *, appeal, bp, stamina, special, strategy):
+    def __init__(self, *, appeal, bp, stamina, special, attack_strategy):
         self.appeal = appeal
         self.stamina = stamina
         self.bp = bp
         self.special = special
 
         self.enemy1 = EnemyManager(
-            ATTACK1_HP, ATTACK1_EXP, self.bp, self.special, EnemyType.ENEMY1, strategy.enemy1_attack, random=False,
+            ATTACK1_HP,
+            ATTACK1_EXP,
+            self.bp,
+            self.special,
+            EnemyType.ENEMY1,
+            attack_strategy.enemy1_attack,
+            random=False,
         )
         self.enemy3 = EnemyManager(
-            ATTACK3_HP, ATTACK3_EXP, self.bp, self.special, EnemyType.ENEMY3, strategy.enemy3_attack, random=False,
+            ATTACK3_HP,
+            ATTACK3_EXP,
+            self.bp,
+            self.special,
+            EnemyType.ENEMY3,
+            attack_strategy.enemy3_attack,
+            random=False,
         )
         self.enemy5 = EnemyManager(
-            ATTACK5_HP, ATTACK5_EXP, self.bp, self.special, EnemyType.ENEMY5, strategy.enemy5_attack, random=True,
+            ATTACK5_HP,
+            ATTACK5_EXP,
+            self.bp,
+            self.special,
+            EnemyType.ENEMY5,
+            attack_strategy.enemy5_attack,
+            random=True,
         )
         self.enemy7 = EnemyManager(
-            ATTACKSP_HP, ATTACKSP_EXP, self.bp, self.special, EnemyType.ENEMY7, strategy.enemy7_attack, random=False,
+            ATTACKSP_HP,
+            ATTACKSP_EXP,
+            self.bp,
+            self.special,
+            EnemyType.ENEMY7,
+            attack_strategy.enemy7_attack,
+            random=False,
         )
 
         self.love_appeal = LoveAppeal(LOVE_APPEAL_COUNT)
@@ -509,5 +533,5 @@ if __name__ == "__main__":
     special = SpecialBP(10)
 
     # アピール値 (BP1の値)
-    simulator = Simulator(appeal=12675, bp=bp, stamina=stamina, special=special, strategy=AttackStrategy)
+    simulator = Simulator(appeal=12675, bp=bp, stamina=stamina, special=special, attack_strategy=AttackStrategy)
     print(simulator.simulate_score())
