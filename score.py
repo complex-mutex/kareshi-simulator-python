@@ -13,7 +13,6 @@ def load_const_from_file(filename, func):
 
 
 # TODO: 気が向いたら設定ファイルを作って一括で読み込む
-
 BOOSTUP_COUNT_DROP = load_const_from_file("data/boostup_count_drop.txt", int)
 BOOSTUP_COUNT_POINT = load_const_from_file("data/boostup_count_point.txt", int)
 BOOSTUP_COUNT_APPEAL = load_const_from_file("data/boostup_count_appeal.txt", int)
@@ -24,7 +23,6 @@ BOOSTUP_RATE_POINT = load_const_from_file("data/boostup_rate_point.txt", float)
 BOOSTUP_RATE_APPEAL = load_const_from_file("data/boostup_rate_appeal.txt", float)
 BOOSTUP_RATE_DATE = load_const_from_file("data/boostup_rate_date.txt", float)
 
-# TODO: 経験値ボーナスの計算をする（現状ボーナスついたものなので）
 ATTACK1_HP = load_const_from_file("data/attack1_hp.txt", int)
 ATTACK1_EXP = load_const_from_file("data/attack1_exp.txt", int)
 ATTACK3_HP = load_const_from_file("data/attack3_hp.txt", int)
@@ -533,5 +531,5 @@ if __name__ == "__main__":
     special = SpecialBP(10)
 
     # アピール値 (BP1の値)
-    simulator = Simulator(appeal=12675, bp=bp, stamina=stamina, special=special, attack_strategy=AttackStrategy)
+    simulator = Simulator(appeal=13000, bp=bp, stamina=stamina, special=special, attack_strategy=AttackStrategy)
     print(simulator.simulate_score())
