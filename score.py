@@ -13,7 +13,6 @@ def load_const_from_file(filename, func):
 
 
 # TODO: 気が向いたら設定ファイルを作って一括で読み込む
-
 BOOSTUP_COUNT_DROP = load_const_from_file("data/boostup_count_drop.txt", int)
 BOOSTUP_COUNT_POINT = load_const_from_file("data/boostup_count_point.txt", int)
 BOOSTUP_COUNT_APPEAL = load_const_from_file("data/boostup_count_appeal.txt", int)
@@ -24,7 +23,6 @@ BOOSTUP_RATE_POINT = load_const_from_file("data/boostup_rate_point.txt", float)
 BOOSTUP_RATE_APPEAL = load_const_from_file("data/boostup_rate_appeal.txt", float)
 BOOSTUP_RATE_DATE = load_const_from_file("data/boostup_rate_date.txt", float)
 
-# TODO: 経験値ボーナスの計算をする（現状ボーナスついたものなので）
 ATTACK1_HP = load_const_from_file("data/attack1_hp.txt", int)
 ATTACK1_EXP = load_const_from_file("data/attack1_exp.txt", int)
 ATTACK3_HP = load_const_from_file("data/attack3_hp.txt", int)
@@ -35,7 +33,7 @@ ATTACKSP_HP = load_const_from_file("data/attacksp_hp.txt", int)
 ATTACKSP_EXP = load_const_from_file("data/attacksp_exp.txt", int)
 
 # TODO: 好感度の内部数値推測
-LOVE_APPEAL_COUNT = [20] * 10 + [30] * 10 + [40] * 10 + [45] * 10 + [50] * 10 + [30]
+LOVE_APPEAL_COUNT = [8] * 10 + [28] * 10 + [38] * 10 + [48] * 10 + [58] * 10 + [30]
 
 
 RUN_STAMINA = 2
@@ -121,9 +119,10 @@ class BP:
 
     def run(self, bp):
         if self.bp < bp:
-            if self.candy >= bp:
-                self.candy -= bp
-                self.bp += bp
+            diff = bp - self.bp
+            if self.candy >= diff:
+                self.candy -= diff
+                self.bp += diff
             else:
                 raise ValueError("no bp and item")
 
@@ -164,13 +163,14 @@ class EnemyType(Enum):
 
 
 class EnemyManager:
-    def __init__(self, hps, exps, bp, special, enemy_type, random=False):
+    def __init__(self, hps, exps, bp, special, enemy_type, attack_strategy, random=False):
         self.current_level = 1
         self.hps = hps
         self.exps = exps
         self.bp = bp
         self.special = special
         self.enemy_type = enemy_type
+        self.attack_strategy = attack_strategy
         self.random = random
 
         if len(hps) != len(exps):
@@ -182,7 +182,9 @@ class EnemyManager:
             level = choice(range(self.max_level), 1)[0]
         else:
             level = self.current_level - 1
-        return Enemy(self.hps[level], self.exps[level], self, self.bp, self.special, self.enemy_type,)
+        return Enemy(
+            self.hps[level], self.exps[level], self, self.bp, self.special, self.enemy_type, self.attack_strategy
+        )
 
     def win(self):
         if not self.random:
@@ -195,37 +197,89 @@ class AttackType(Enum):
     ATTACKSP = 10
 
 
+class AttackStrategy:
+    """
+    Args:
+    hp      : 敵の残りHP
+    bp1     : BP1での攻撃力 (アイテムが存在しない時はNone)
+    bp3     : BP3での攻撃力 (アイテムが存在しない時はNone)
+    special : 鈍器での攻撃力 (アイテムが存在しない時はNone)
+
+    Returns:
+    AttackType: ATTACK1 or ATTACK3 or ATTACKSPのいずれか
+    """
+
+    @staticmethod
+    def enemy1_attack(hp, bp1, bp3, special):
+        if bp3 and hp > bp3:
+            return AttackType.ATTACK3
+        elif bp1:
+            return AttackType.ATTACK1
+        else:
+            return AttackType.ATTACKSP
+
+    @staticmethod
+    def enemy3_attack(hp, bp1, bp3, special):
+        if bp3 and hp > bp3:
+            return AttackType.ATTACK3
+        elif bp1:
+            return AttackType.ATTACK1
+        else:
+            return AttackType.ATTACKSP
+
+    @staticmethod
+    def enemy5_attack(hp, bp1, bp3, special):
+        if bp3 and hp > bp3:
+            return AttackType.ATTACK3
+        elif bp1:
+            return AttackType.ATTACK1
+        else:
+            return AttackType.ATTACKSP
+
+    @staticmethod
+    def enemy7_attack(hp, bp1, bp3, special):
+        if bp3 and hp > bp3:
+            return AttackType.ATTACK3
+        elif bp1:
+            return AttackType.ATTACK1
+        else:
+            return AttackType.ATTACKSP
+
+
 class Enemy:
-    def __init__(self, hp, exp, manager, bp, special, enemy_type):
+    def __init__(self, hp, exp, manager, bp, special, enemy_type, attack_strategy):
         self.hp = hp
         self.exp = exp
         self.manager = manager
         self.bp = bp
         self.special = special
         self.enemy_type = enemy_type
+        self.attack_strategy = attack_strategy
 
     def is_win(self):
         return self.hp <= 0
 
     # return: 獲得経験値，アイテム数
-    def attack(self, drop_rate, appeal, point, attack_type):
+    def attack(self, drop_rate, appeal, point):
         if self.is_win():
             raise ValueError("enemy is already deleted")
 
-        twice = choice([1, 2], 1, [0.7, 0.3])[0]
+        twice = choice([1, 2], 1, [0.8, 0.2])[0]
+
+        attack1 = appeal.boost() if self.bp.can_attack(1) else None
+        attack3 = appeal.boost() * 4 if self.bp.can_attack(3) else None
+        attacksp = appeal.boost() * 10 if self.special.can_attack() else None
+        attack_type = self.attack_strategy(self.hp, attack1, attack3, attacksp)
 
         if attack_type == AttackType.ATTACK1 and self.bp.can_attack(1):
-            attack1 = appeal.boost()
             self.bp.run(1)
             self.hp -= attack1 * twice
 
         if attack_type == AttackType.ATTACK3 and self.bp.can_attack(3):
-            attack3 = appeal.boost() * 4
             self.bp.run(3)
             self.hp -= attack3 * twice
 
         if attack_type == AttackType.ATTACKSP and self.special.can_attack():
-            attacksp = appeal.boost() * 10
             self.special.run()
             self.hp -= attacksp * twice
 
@@ -268,7 +322,7 @@ class DateManager:
     def get(self):
         return self.enemy
 
-    def attack(self, drop_rate, appeal, point, attack_type, god_rate):
+    def attack(self, drop_rate, appeal, point, god_rate):
         if self.date > 0 and self.enemy is None:
             self.date -= 1
             self.enemy = self.enemy5.get()
@@ -276,7 +330,7 @@ class DateManager:
         if self.enemy is None:
             raise ValueError("no date")
 
-        point, item = self.enemy.attack(drop_rate, appeal, point, attack_type)
+        point, item = self.enemy.attack(drop_rate, appeal, point)
 
         if self.enemy.is_win():
             self.enemy = None
@@ -330,7 +384,7 @@ class Stage:
         self.date_manager = date_manager
         self.item_manager = item_manager
 
-    def run(self, appeal, point, drop_rate):
+    def run(self, appeal, point, drop_rate, is_battle=True):
         self.stamina.run(RUN_STAMINA)
 
         def enemy():
@@ -338,7 +392,7 @@ class Stage:
                 self.enemy = choice([self.enemy_manager1, self.enemy_manager3], 1, [0.75, 0.25])[0].get()
 
         def recover():
-            self.bp.recover(choice([1, 2, 3], 1, [0.70, 0.20, 0.10])[0])
+            self.bp.recover(choice([1, 2, 3], 1, [0.80, 0.10, 0.10])[0])
 
         def heart():
             pass
@@ -346,13 +400,12 @@ class Stage:
         def noop():
             pass
 
-        choice([noop, enemy, recover, heart], 1, [0.25, 0.50, 0.10, 0.15])[0]()
+        choice([noop, enemy, recover, heart], 1, [0.28, 0.52, 0.05, 0.15])[0]()
 
         total_point = 35
 
-        if self.enemy is not None and (self.bp.can_attack(1) or self.special.can_attack()):
-            attacktype = AttackType.ATTACK1 if self.bp.can_attack(1) else AttackType.ATTACKSP
-            p, item = self.enemy.attack(drop_rate, appeal, point, attacktype)
+        if is_battle and self.enemy is not None and (self.bp.can_attack(1) or self.special.can_attack()):
+            p, item = self.enemy.attack(drop_rate, appeal, point)
             total_point += p
             if self.enemy.is_win():
                 self.item_manager.get(item)
@@ -363,18 +416,49 @@ class Stage:
 
 
 # TODO: ガチャによるappealアップ実装
-# TODO: メンバーをどのアタックタイプで倒すかの選択
 class Simulator:
-    def __init__(self, *, appeal, bp, stamina, special):
+    def __init__(self, *, appeal, bp, stamina, special, attack_strategy):
         self.appeal = appeal
         self.stamina = stamina
         self.bp = bp
         self.special = special
 
-        self.enemy1 = EnemyManager(ATTACK1_HP, ATTACK1_EXP, self.bp, self.special, EnemyType.ENEMY1, random=False,)
-        self.enemy3 = EnemyManager(ATTACK3_HP, ATTACK3_EXP, self.bp, self.special, EnemyType.ENEMY3, random=False,)
-        self.enemy5 = EnemyManager(ATTACK5_HP, ATTACK5_EXP, self.bp, self.special, EnemyType.ENEMY5, random=True,)
-        self.enemy7 = EnemyManager(ATTACKSP_HP, ATTACKSP_EXP, self.bp, self.special, EnemyType.ENEMY7, random=False,)
+        self.enemy1 = EnemyManager(
+            ATTACK1_HP,
+            ATTACK1_EXP,
+            self.bp,
+            self.special,
+            EnemyType.ENEMY1,
+            attack_strategy.enemy1_attack,
+            random=False,
+        )
+        self.enemy3 = EnemyManager(
+            ATTACK3_HP,
+            ATTACK3_EXP,
+            self.bp,
+            self.special,
+            EnemyType.ENEMY3,
+            attack_strategy.enemy3_attack,
+            random=False,
+        )
+        self.enemy5 = EnemyManager(
+            ATTACK5_HP,
+            ATTACK5_EXP,
+            self.bp,
+            self.special,
+            EnemyType.ENEMY5,
+            attack_strategy.enemy5_attack,
+            random=True,
+        )
+        self.enemy7 = EnemyManager(
+            ATTACKSP_HP,
+            ATTACKSP_EXP,
+            self.bp,
+            self.special,
+            EnemyType.ENEMY7,
+            attack_strategy.enemy7_attack,
+            random=False,
+        )
 
         self.love_appeal = LoveAppeal(LOVE_APPEAL_COUNT)
 
@@ -401,56 +485,86 @@ class Simulator:
         appeal = BoostManager(self.appeal, [self.appealup, ConstBoost(card_appeal)])
         point = BoostManager(1.0, [self.pointup, ConstBoost(card_point)])  # FIXME: これはナンセンスでは？
 
+        def select_stage():
+            love_level = self.love_appeal.love_level
+            stages = [self.stage1]
+            is_maxs = [self.dropup.is_max()]
+            if love_level >= 10:
+                stages.append(self.stage2)
+                is_maxs.append(self.pointup.is_max())
+            if love_level >= 20:
+                stages.append(self.stage3)
+                is_maxs.append(self.appealup.is_max())
+
+            stage = None
+            for s, m in zip(stages, is_maxs):
+                if not m:
+                    stage = s
+                    break
+
+            done = False
+            if stage is None:
+                stage = stages[-1]
+                done = True
+            return stage, done
+
         while not (
             self.stamina.is_end(RUN_STAMINA)
             and ((self.bp.is_end() and self.special.is_end()) or self.date_manager.is_end())
         ):
-            if not self.stamina.is_end(RUN_STAMINA):
-                love_level = self.love_appeal.love_level
-                stages = [self.stage1]
-                is_maxs = [self.dropup.is_max()]
-                if love_level >= 10:
-                    stages.append(self.stage2)
-                    is_maxs.append(self.pointup.is_max())
-                if love_level >= 20:
-                    stages.append(self.stage3)
-                    is_maxs.append(self.appealup.is_max())
 
-                stage = None
-                for s, m in zip(stages, is_maxs):
-                    if not m:
-                        stage = s
-                        break
+            stage, done = select_stage()
 
-                if stage is None:
-                    stage = stages[-1]
-
-                p = stage.run(appeal, point, self.drop_rate.get(0.3 * self.dropup.boost()))
-                total_point += p
-            elif not (self.bp.is_end() and self.special.is_end()) and not self.date_manager.is_end():
-                attacktype = AttackType.ATTACK1 if self.bp.can_attack(1) else AttackType.ATTACKSP
-                p = self.date_manager.attack(
-                    self.drop_rate.get(0.3 * self.dropup.boost()),
-                    appeal,
-                    point,
-                    attacktype,
-                    0.45 * self.dateup.boost(),
-                )
-
-                total_point += p
+            if not done:
+                if not self.stamina.is_end(RUN_STAMINA):
+                    p = stage.run(appeal, point, self.drop_rate.get(0.2 * self.dropup.boost()), True)
+                    total_point += p
+                elif not (self.bp.is_end() and self.special.is_end()):
+                    p = self.date_manager.attack(
+                        self.drop_rate.get(0.2 * self.dropup.boost()), appeal, point, 0.45 * self.dateup.boost(),
+                    )
+                    total_point += p
+            else:
+                if self.date_manager.is_end() and not self.stamina.is_end(RUN_STAMINA):
+                    p = stage.run(appeal, point, self.drop_rate.get(0.2 * self.dropup.boost()), True)
+                    total_point += p
+                elif self.stamina.is_end(RUN_STAMINA):
+                    p = self.date_manager.attack(
+                        self.drop_rate.get(0.2 * self.dropup.boost()), appeal, point, 0.45 * self.dateup.boost(),
+                    )
+                    total_point += p
+                elif not (self.bp.is_end() and self.special.is_end()):
+                    p = self.date_manager.attack(
+                        self.drop_rate.get(0.2 * self.dropup.boost()), appeal, point, 0.45 * self.dateup.boost(),
+                    )
+                    total_point += p
+                else:
+                    p = stage.run(appeal, point, self.drop_rate.get(0.2 * self.dropup.boost()), False)
+                    total_point += p
         return total_point
 
 
 if __name__ == "__main__":
-    # BP(自然回復分，ミニキャンディ，キャンディ)
-    bp = BP(0, 1000, 1000)
+    # シミュレーション回数
+    trials = 5
+    score_logs = []
+    for trial in range(trials):
+        # BP(自然回復分，ミニキャンディ，キャンディ)
+        bp = BP(0, 1000, 1000)
 
-    # Stamina(自然回復分，チャージハーフ，チャージフル，レベル)
-    stamina = Stamina(0, 1000, 0, 150)
+        # Stamina(自然回復分，チャージハーフ，チャージフル，レベル)
+        stamina = Stamina(0, 1000, 0, 150)
 
-    # 鈍器
-    special = SpecialBP(10)
+        # 鈍器
+        special = SpecialBP(10)
 
-    # アピール値 (BP1の値)
-    simulator = Simulator(appeal=13000, bp=bp, stamina=stamina, special=special)
-    print(simulator.simulate_score())
+        # アピール値 (BP1の値)
+        simulator = Simulator(appeal=13000, bp=bp, stamina=stamina, special=special, attack_strategy=AttackStrategy)
+
+        score = simulator.simulate_score()
+        print("trial={}, score={:,d}".format(str(trial + 1).zfill(len(str(trials))), score))
+        score_logs.append(score)
+
+    # 統計情報
+    print("average ({} trial(s)): {:,}".format(trials, sum(score_logs) / trials))
+    print("max score: {:,d}, min score: {:,d}".format(max(score_logs), min(score_logs)))
