@@ -119,9 +119,10 @@ class BP:
 
     def run(self, bp):
         if self.bp < bp:
-            if self.candy >= bp:
-                self.candy -= bp
-                self.bp += bp
+            diff = bp - self.bp
+            if self.candy >= diff:
+                self.candy -= diff
+                self.bp += diff
             else:
                 raise ValueError("no bp and item")
 
@@ -383,7 +384,7 @@ class Stage:
         self.date_manager = date_manager
         self.item_manager = item_manager
 
-    def run(self, appeal, point, drop_rate):
+    def run(self, appeal, point, drop_rate, is_battle=True):
         self.stamina.run(RUN_STAMINA)
 
         def enemy():
@@ -403,7 +404,7 @@ class Stage:
 
         total_point = 35
 
-        if self.enemy is not None and (self.bp.can_attack(1) or self.special.can_attack()):
+        if is_battle and self.enemy is not None and (self.bp.can_attack(1) or self.special.can_attack()):
             p, item = self.enemy.attack(drop_rate, appeal, point)
             total_point += p
             if self.enemy.is_win():
@@ -484,51 +485,86 @@ class Simulator:
         appeal = BoostManager(self.appeal, [self.appealup, ConstBoost(card_appeal)])
         point = BoostManager(1.0, [self.pointup, ConstBoost(card_point)])  # FIXME: これはナンセンスでは？
 
+        def select_stage():
+            love_level = self.love_appeal.love_level
+            stages = [self.stage1]
+            is_maxs = [self.dropup.is_max()]
+            if love_level >= 10:
+                stages.append(self.stage2)
+                is_maxs.append(self.pointup.is_max())
+            if love_level >= 20:
+                stages.append(self.stage3)
+                is_maxs.append(self.appealup.is_max())
+
+            stage = None
+            for s, m in zip(stages, is_maxs):
+                if not m:
+                    stage = s
+                    break
+
+            done = False
+            if stage is None:
+                stage = stages[-1]
+                done = True
+            return stage, done
+
         while not (
             self.stamina.is_end(RUN_STAMINA)
             and ((self.bp.is_end() and self.special.is_end()) or self.date_manager.is_end())
         ):
-            if not self.stamina.is_end(RUN_STAMINA):
-                love_level = self.love_appeal.love_level
-                stages = [self.stage1]
-                is_maxs = [self.dropup.is_max()]
-                if love_level >= 10:
-                    stages.append(self.stage2)
-                    is_maxs.append(self.pointup.is_max())
-                if love_level >= 20:
-                    stages.append(self.stage3)
-                    is_maxs.append(self.appealup.is_max())
 
-                stage = None
-                for s, m in zip(stages, is_maxs):
-                    if not m:
-                        stage = s
-                        break
+            stage, done = select_stage()
 
-                if stage is None:
-                    stage = stages[-1]
-
-                p = stage.run(appeal, point, self.drop_rate.get(0.3 * self.dropup.boost()))
-                total_point += p
-            elif not (self.bp.is_end() and self.special.is_end()) and not self.date_manager.is_end():
-                p = self.date_manager.attack(
-                    self.drop_rate.get(0.3 * self.dropup.boost()), appeal, point, 0.45 * self.dateup.boost(),
-                )
-
-                total_point += p
+            if not done:
+                if not self.stamina.is_end(RUN_STAMINA):
+                    p = stage.run(appeal, point, self.drop_rate.get(0.3 * self.dropup.boost()), True)
+                    total_point += p
+                elif not (self.bp.is_end() and self.special.is_end()):
+                    p = self.date_manager.attack(
+                        self.drop_rate.get(0.3 * self.dropup.boost()), appeal, point, 0.45 * self.dateup.boost(),
+                    )
+                    total_point += p
+            else:
+                if self.date_manager.is_end() and not self.stamina.is_end(RUN_STAMINA):
+                    p = stage.run(appeal, point, self.drop_rate.get(0.3 * self.dropup.boost()), True)
+                    total_point += p
+                elif self.stamina.is_end(RUN_STAMINA):
+                    p = self.date_manager.attack(
+                        self.drop_rate.get(0.3 * self.dropup.boost()), appeal, point, 0.45 * self.dateup.boost(),
+                    )
+                    total_point += p
+                elif not (self.bp.is_end() and self.special.is_end()):
+                    p = self.date_manager.attack(
+                        self.drop_rate.get(0.3 * self.dropup.boost()), appeal, point, 0.45 * self.dateup.boost(),
+                    )
+                    total_point += p
+                else:
+                    p = stage.run(appeal, point, self.drop_rate.get(0.3 * self.dropup.boost()), False)
+                    total_point += p
         return total_point
 
 
 if __name__ == "__main__":
-    # BP(自然回復分，ミニキャンディ，キャンディ)
-    bp = BP(0, 1000, 1000)
+    # シミュレーション回数
+    trials = 5
+    score_logs = []
+    for trial in range(trials):
+        # BP(自然回復分，ミニキャンディ，キャンディ)
+        bp = BP(0, 1000, 1000)
 
-    # Stamina(自然回復分，チャージハーフ，チャージフル，レベル)
-    stamina = Stamina(0, 1000, 0, 150)
+        # Stamina(自然回復分，チャージハーフ，チャージフル，レベル)
+        stamina = Stamina(0, 1000, 0, 150)
 
-    # 鈍器
-    special = SpecialBP(10)
+        # 鈍器
+        special = SpecialBP(10)
 
-    # アピール値 (BP1の値)
-    simulator = Simulator(appeal=13000, bp=bp, stamina=stamina, special=special, attack_strategy=AttackStrategy)
-    print(simulator.simulate_score())
+        # アピール値 (BP1の値)
+        simulator = Simulator(appeal=13000, bp=bp, stamina=stamina, special=special, attack_strategy=AttackStrategy)
+
+        score = simulator.simulate_score()
+        print("trial={}, score={:,d}".format(str(trial + 1).zfill(len(str(trials))), score))
+        score_logs.append(score)
+
+    # 統計情報
+    print("average ({} trial(s)): {:,}".format(trials, sum(score_logs) / trials))
+    print("max score: {:,d}, min score: {:,d}".format(max(score_logs), min(score_logs)))
