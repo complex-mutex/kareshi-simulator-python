@@ -33,7 +33,7 @@ ATTACKSP_HP = load_const_from_file("data/attacksp_hp.txt", int)
 ATTACKSP_EXP = load_const_from_file("data/attacksp_exp.txt", int)
 
 # TODO: 好感度の内部数値推測
-LOVE_APPEAL_COUNT = [20] * 10 + [30] * 10 + [40] * 10 + [45] * 10 + [50] * 10 + [30]
+LOVE_APPEAL_COUNT = [8] * 10 + [28] * 10 + [38] * 10 + [48] * 10 + [58] * 10 + [30]
 
 
 RUN_STAMINA = 2
@@ -264,7 +264,7 @@ class Enemy:
         if self.is_win():
             raise ValueError("enemy is already deleted")
 
-        twice = choice([1, 2], 1, [0.7, 0.3])[0]
+        twice = choice([1, 2], 1, [0.8, 0.2])[0]
 
         attack1 = appeal.boost() if self.bp.can_attack(1) else None
         attack3 = appeal.boost() * 4 if self.bp.can_attack(3) else None
@@ -392,7 +392,7 @@ class Stage:
                 self.enemy = choice([self.enemy_manager1, self.enemy_manager3], 1, [0.75, 0.25])[0].get()
 
         def recover():
-            self.bp.recover(choice([1, 2, 3], 1, [0.70, 0.20, 0.10])[0])
+            self.bp.recover(choice([1, 2, 3], 1, [0.80, 0.10, 0.10])[0])
 
         def heart():
             pass
@@ -400,7 +400,7 @@ class Stage:
         def noop():
             pass
 
-        choice([noop, enemy, recover, heart], 1, [0.25, 0.50, 0.10, 0.15])[0]()
+        choice([noop, enemy, recover, heart], 1, [0.28, 0.52, 0.05, 0.15])[0]()
 
         total_point = 35
 
@@ -517,29 +517,29 @@ class Simulator:
 
             if not done:
                 if not self.stamina.is_end(RUN_STAMINA):
-                    p = stage.run(appeal, point, self.drop_rate.get(0.3 * self.dropup.boost()), True)
+                    p = stage.run(appeal, point, self.drop_rate.get(0.2 * self.dropup.boost()), True)
                     total_point += p
                 elif not (self.bp.is_end() and self.special.is_end()):
                     p = self.date_manager.attack(
-                        self.drop_rate.get(0.3 * self.dropup.boost()), appeal, point, 0.45 * self.dateup.boost(),
+                        self.drop_rate.get(0.2 * self.dropup.boost()), appeal, point, 0.45 * self.dateup.boost(),
                     )
                     total_point += p
             else:
                 if self.date_manager.is_end() and not self.stamina.is_end(RUN_STAMINA):
-                    p = stage.run(appeal, point, self.drop_rate.get(0.3 * self.dropup.boost()), True)
+                    p = stage.run(appeal, point, self.drop_rate.get(0.2 * self.dropup.boost()), True)
                     total_point += p
                 elif self.stamina.is_end(RUN_STAMINA):
                     p = self.date_manager.attack(
-                        self.drop_rate.get(0.3 * self.dropup.boost()), appeal, point, 0.45 * self.dateup.boost(),
+                        self.drop_rate.get(0.2 * self.dropup.boost()), appeal, point, 0.45 * self.dateup.boost(),
                     )
                     total_point += p
                 elif not (self.bp.is_end() and self.special.is_end()):
                     p = self.date_manager.attack(
-                        self.drop_rate.get(0.3 * self.dropup.boost()), appeal, point, 0.45 * self.dateup.boost(),
+                        self.drop_rate.get(0.2 * self.dropup.boost()), appeal, point, 0.45 * self.dateup.boost(),
                     )
                     total_point += p
                 else:
-                    p = stage.run(appeal, point, self.drop_rate.get(0.3 * self.dropup.boost()), False)
+                    p = stage.run(appeal, point, self.drop_rate.get(0.2 * self.dropup.boost()), False)
                     total_point += p
         return total_point
 
